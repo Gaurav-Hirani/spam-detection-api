@@ -50,8 +50,7 @@ Unlike standard ML classifiers, the main.py implementation uses a **Hybrid Engin
 * spam.csv: The dataset used for training and testing.  
 * SpamDectection (1).ipynb: The complete research, EDA, and model benchmarking notebook.  
 * index.html: The clean, responsive UI for the classifier.
-
-* ## **vercel.json: Configuration for cloud deployment.** 
+ 
 
 **Author:** \[Gaurav Hirani\]
 
