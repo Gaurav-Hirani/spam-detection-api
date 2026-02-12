@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spam Detector Dashboard</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; font-size: 16px; }
+        button { background-color: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; width: 100%; }
+        button:hover { background-color: #218838; }
+        .result { margin-top: 30px; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; border-radius: 5px; }
+        .spam { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .ham { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Spam Detection Dashboard</h1>
+        
+        <form action="/predict" method="post">
+            <label for="message">Paste your SMS or Email below:</label>
+            <textarea name="message" required>{{ message if message else '' }}</textarea>
+            <button type="submit">Check for Spam</button>
+        </form>
+
+        {% if prediction %}
+            <div class="result {{ 'spam' if prediction == 'Spam' else 'ham' }}">
+                Result: {{ prediction }}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
