@@ -19,16 +19,20 @@ if not os.path.exists(nltk_data_path):
 # Add this path to NLTK so it knows where to look
 nltk.data.path.append(nltk_data_path)
 
-# Download necessary data to /tmp
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', download_dir=nltk_data_path)
+# Download all necessary resources to /tmp
+# Added 'punkt_tab' to resolve the LookupError seen in logs
+resources = ['punkt', 'punkt_tab', 'stopwords']
 
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', download_dir=nltk_data_path)
+for resource in resources:
+    try:
+        if resource == 'stopwords':
+            nltk.data.find('corpora/stopwords')
+        elif resource == 'punkt_tab':
+            nltk.data.find('tokenizers/punkt_tab')
+        else:
+            nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download(resource, download_dir=nltk_data_path)
 
 # --- 2. SETUP APP & TEMPLATES ---
 app = FastAPI()
@@ -38,7 +42,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(current_dir, "templates"))
 
 # --- 3. LOAD MODEL & VECTORIZER ---
-# We use os.path.join to ensure linux/windows compatibility
 with open(os.path.join(current_dir, 'vectorizer.pkl'), 'rb') as f:
     tfidf = pickle.load(f)
 with open(os.path.join(current_dir, 'model.pkl'), 'rb') as f:
@@ -49,6 +52,7 @@ ps = PorterStemmer()
 
 def transform_text(text):
     text = text.lower()
+    # word_tokenize uses punkt and punkt_tab
     text = nltk.word_tokenize(text)
     y = []
     for i in text:
@@ -74,7 +78,6 @@ def read_root(request: Request):
 @app.post("/predict", response_class=HTMLResponse)
 def predict_spam(request: Request, message: str = Form(...)):
     # --- RULE BASED OVERRIDE (Hybrid Engine) ---
-    # If the message contains suspicious links, we flag it immediately.
     suspicious_patterns = ["http", "https", "www.", ".com", "bit.ly", "tinyurl"]
     is_suspicious_link = any(pattern in message.lower() for pattern in suspicious_patterns)
 
@@ -88,7 +91,6 @@ def predict_spam(request: Request, message: str = Form(...)):
     result = model.predict(vector_input)[0]
     
     # --- COMBINE LOGIC ---
-    # If ML says Spam OR it has a suspicious link, we call it Spam.
     if result == 1 or is_suspicious_link:
         prediction_text = "Spam"
     else:
