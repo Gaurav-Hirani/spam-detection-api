@@ -1,25 +1,50 @@
+import os
+import pickle
+import string
+import nltk
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
-import pickle
-import nltk
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
-import string
 
-# 1. SETUP APP & TEMPLATES
+# --- 1. VERCEL-SPECIFIC NLTK SETUP ---
+# Vercel is read-only. We must force NLTK to download to /tmp (the only writeable folder).
+nltk_data_path = os.path.join('/tmp', 'nltk_data')
+
+# Create the directory if it doesn't exist
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+
+# Add this path to NLTK so it knows where to look
+nltk.data.path.append(nltk_data_path)
+
+# Download necessary data to /tmp
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', download_dir=nltk_data_path)
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', download_dir=nltk_data_path)
+
+# --- 2. SETUP APP & TEMPLATES ---
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
 
-# 2. LOAD MODEL & VECTORIZER
-with open('vectorizer.pkl', 'rb') as f:
+# Use absolute path for templates to avoid "TemplateNotFound" errors on cloud
+current_dir = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(current_dir, "templates"))
+
+# --- 3. LOAD MODEL & VECTORIZER ---
+# We use os.path.join to ensure linux/windows compatibility
+with open(os.path.join(current_dir, 'vectorizer.pkl'), 'rb') as f:
     tfidf = pickle.load(f)
-with open('model.pkl', 'rb') as f:
+with open(os.path.join(current_dir, 'model.pkl'), 'rb') as f:
     model = pickle.load(f)
 
-# 3. PREPROCESSING FUNCTION (Must be same as training)
-nltk.download('punkt')
-nltk.download('stopwords')
+# --- 4. PREPROCESSING FUNCTION ---
 ps = PorterStemmer()
 
 def transform_text(text):
@@ -40,14 +65,12 @@ def transform_text(text):
         y.append(ps.stem(i))
     return " ".join(y)
 
-# 4. ROUTE: SHOW THE DASHBOARD (GET)
+# --- 5. ROUTE: SHOW THE DASHBOARD (GET) ---
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# ... (Imports and setup remain the same) ...
-
-# 5. ROUTE: HANDLE PREDICTION (POST)
+# --- 6. ROUTE: HANDLE PREDICTION (POST) ---
 @app.post("/predict", response_class=HTMLResponse)
 def predict_spam(request: Request, message: str = Form(...)):
     # --- RULE BASED OVERRIDE (Hybrid Engine) ---
